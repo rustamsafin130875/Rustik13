@@ -47,10 +47,10 @@ def checker(id):
 
 ##Методы для продуктов##
 #Вывод информации о конкретном продукте
-def show_info(pr_name):
+def show_info(pr_id):
     sql.execute('SELECT pr_name, pr_des,'
                 'pr_amount, pr_price, '
-                'pr_photo WHERE pr_name=?;', (pr_name,)).fetchone()
+                'pr_photo WHERE pr_id=?;', (pr_id,)).fetchone()
 
 #Добавление товаров
 def add_product(pr_name, pr_amount, pr_price, pr_des, pr_photo):
@@ -85,7 +85,7 @@ def get_pr_id():
 
 ##Методы для корзины##
 #Добавление в корзину
-def add_to_cart(user_id, user_pr, pr_quantity, user_total=1):
+def add_to_cart(user_id, user_pr, pr_quantity, user_total=0):
     sql.execute('INSERT INTO user_cart VALUES (?, ?, ?, ?);',
                 (user_id, user_pr, pr_quantity, user_total))
     #Фиксируем изменения

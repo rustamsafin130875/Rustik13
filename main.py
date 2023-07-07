@@ -22,9 +22,11 @@ def start_message(message):
     #Проверка на наличие пользователя в базе данных
     if check_user:
         products = db.get_pr_name_id()
-        print(products)
-        bot.send_message(user_id, 'Добро пожаловать!',reply_markup=telebot.types.ReplyKeyboardRemove())
-        bot.send_message(user_id, 'Выберите пункт меню!', reply_markup=buttons.main_menu_buttons(products))
+        bot.send_message(user_id, 'Добро пожаловать!',
+                         reply_markup=telebot.types.ReplyKeyboardRemove())
+        bot.send_message(user_id, 'Выберите пункт меню:',
+                         reply_markup=buttons.main_menu_buttons(products))
+
     else:
         bot.send_message(user_id, 'Здравствуйте запишите ваше имя!')
         #Перевести на этап получения имени
@@ -37,6 +39,12 @@ def get_name(message):
                      reply_markup=buttons.num_button())
     #Перевести на этап получения номера
     bot.register_next_step_handler(message, get_number, user_name)
+
+#Админ-панель - ДЗ
+# @bot.message_handler(commands=['admin'])
+# def start_admin(message):
+#     if user_id == 5172674378:
+#         pass
 
 #Этап получения номера
 def get_number(message, user_name):
@@ -54,41 +62,73 @@ def get_number(message, user_name):
 
 @bot.callback_query_handler(lambda call: call.data in ['increment', 'decrement', 'to_cart', 'back'])
 def get_user_count(call):
-    chat_id = call.nessage.chat.id
+    chat_id = call.message.chat.id
 
     if call.data == 'increment':
-        actual_count = users[chat_id]['pr_amount']
+        actual_count = users[chat_id]['pr_count']
 
-        users[chat_id]['pr_amount'] += 1
-        bot.edit_message_reply_markup(chat_id=chat_id, message_id=call.message.message_id, reply_markup=buttons.choose_product_count('increment', actual_count))
-
-
+        users[chat_id]['pr_count'] += 1
+        bot.edit_message_reply_markup(chat_id=chat_id,
+                                      message_id=call.message.message_id,
+                                      reply_markup=buttons.choose_product_count(actual_count, 'increment'))
 
     elif call.data == 'decrement':
-        actual_count = users[chat_id]['pr_amount']
+        actual_count = users[chat_id]['pr_count']
 
-        users[chat_id]['pr_amount'] += 1
-        bot.edit_message_reply_markup(chat_id=chat_id, message_id=call.message.message_id, reply_markup=buttons.choose_product_count('decrement', actual_count))
-
+        users[chat_id]['pr_count'] -= 1
+        bot.edit_message_reply_markup(chat_id=chat_id,
+                                      message_id=call.message.message_id,
+                                      reply_markup=buttons.choose_product_count(actual_count, 'decrement'))
     elif call.data == 'back':
         products = db.get_pr_name_id()
-        bot.edit_message_text('Выберите пунк меню', chat_id, call.message.message_id, reply_markup=buttons.main_menu_buttons(products))
-
+        bot.edit_message_text('Выберите пункт меню:',
+                              chat_id,
+                              call.message.message_id,
+                              reply_markup=buttons.main_menu_buttons(products))
     elif call.data == 'to_cart':
-        product_count = users[chat_id]['pr_amount']
-        total = users[chat_id]['pr_amount'] * users[chat_id]['pr_price']
-        users_product = users[chat_id]['pr_name']
-        db.add_to_cart(chat_id, users_product, product_count, total)
-        bot.edit_message_text('Продукт успешно добавлен! Хотите  заказать что-нибудь еще',
-                              chat_id, call.message.message_id, reply_markup=buttons.main_menu_buttons())
+        products = db.get_pr_name_id()
+        product_count = users[chat_id]['pr_count']
 
-@bot.callback_query_handler(lambda call: call.data == 'cart')
+        user_product = users[chat_id]['pr_name']
+        db.add_to_cart(chat_id, user_product, product_count)
+        bot.edit_message_text('Продукт успешно добавлен! Хотите заказать что-нибудь еще?',
+                              chat_id,
+                              call.message.message_id,
+                              reply_markup=buttons.main_menu_buttons(products))
+
+
+
+@bot.callback_query_handler(lambda call: call.data in ['cart', 'clear_cart', 'order', 'back'])
 def cart_handle(call):
     user = call.message.chat.id
     message_id = call.message.message_id
+    products = db.get_pr_name_id()
 
-    bot.edit_message_text('Корзина',
-                          user, message_id, reply_markup=buttons.cart_buttons())
+    if call.data == 'clear_cart':
+        db.del_from_cart(user)
+        bot.edit_message_text('Корзина очищена!',
+                              user,
+                              message_id,
+                              reply_markup=buttons.main_menu_buttons(products))
+    elif call.data == 'order':
+        db.del_from_cart(user)
+        bot.send_message(5172674378, 'Новый заказ!')
+        bot.edit_message_text('Заказ оформлен! Желаете что-то еще?',
+                              user,
+                              message_id,
+                              reply_markup=buttons.main_menu_buttons(products))
+    elif call.data == 'back':
+        products = db.get_pr_name_id()
+        bot.edit_message_text('Выберите пункт меню:',
+                              user,
+                              call.message.message_id,
+                              reply_markup=buttons.main_menu_buttons(products))
+    elif call.data == 'cart':
+        bot.edit_message_text('Корзина',
+                              user,
+                              message_id,
+                              reply_markup=buttons.cart_buttons())
+
 
 def get_location(message, user_name, user_number):
     #Если пользователь отправил локацию через кнопку
@@ -115,7 +155,6 @@ def get_user_product(call):
     bot.edit_message_text('Выберите количество',
                           chat_id=chat_id, message_id=message_id,
                           reply_markup=buttons.choose_product_count())
-
 
 
 
